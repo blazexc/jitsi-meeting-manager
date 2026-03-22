@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>会议管理系统 - 会议中</title>
+  <link rel="stylesheet" href="/src/styles/main.css">
+  <style>
+    /* 会议页面特有样式 */
+    body { overflow: hidden; }
+
+    .control-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg-white);
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s;
+      width: 100%;
+      margin-bottom: 6px;
+    }
+    .control-btn:hover { background: var(--primary-light); color: var(--primary); }
+    .control-btn.danger:hover { background: #fce8e6; color: var(--danger); }
+    .control-btn.active { background: var(--danger); color: white; border-color: var(--danger); }
+
+    /* 消息输入区 */
+    .message-input {
+      display: flex;
+      gap: 6px;
+      padding: 8px 0;
+    }
+    .message-input input {
+      flex: 1;
+      padding: 6px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container" style="height: 100vh;">
+    <!-- 顶部导航栏 -->
+    <nav class="navbar" style="height: 48px; padding: 0 12px;">
+      <div class="navbar-brand" style="font-size: 15px;">
+        <span id="meeting-title">会议</span>
+        <span style="font-size: 11px; color: var(--text-secondary); margin-left: 8px;" id="meeting-id-display"></span>
+      </div>
+      <div class="navbar-user" style="gap: 8px;">
+        <!-- 状态指示 -->
+        <span class="status-item">
+          <span class="status-dot online" id="connection-dot"></span>
+          <span id="participant-count">0 人</span>
+        </span>
+        <span class="status-item" id="recording-status" style="display:none;">
+          <span class="status-dot recording"></span>
+          录制中
+        </span>
+        <span id="user-display" style="font-size: 13px;"></span>
+        <span class="role-badge" id="role-display"></span>
+        <button class="btn btn-sm btn-danger" onclick="leaveMeeting()">离开会议</button>
+      </div>
+    </nav>
+
+    <!-- 会议主体布局 -->
+    <div class="meeting-layout">
+
+      <!-- 左侧控制面板（仅主持人可见） -->
+      <div class="meeting-sidebar" id="sidebar" style="display: none;">
+
+        <!-- 分组标签 -->
+        <div class="sidebar-section" id="groups-section" style="display:none;">
+          <h3>分组管理</h3>
+          <div id="groups-list"></div>
+        </div>
+
+        <!-- 参会者列表 -->
+        <div class="sidebar-section">
+          <h3>参会者</h3>
+          <ul class="participant-list" id="participants-list"></ul>
+        </div>
+
+        <!-- 控制按钮 -->
+        <div class="sidebar-section" id="control-section">
+          <h3>会议控制</h3>
+          <button class="control-btn" onclick="toggleMuteAll()" id="btn-mute-all">
+            全体静音
+          </button>
+          <button class="control-btn" onclick="toggleUnmuteAll()" id="btn-unmute-all">
+            全体取消静音
+          </button>
+          <button class="control-btn" onclick="toggleRecording()" id="btn-recording">
+            开始录制
+          </button>
+          <button class="control-btn" onclick="shareScreen()">
+            共享屏幕
+          </button>
+
+          <!-- 仅总主持人可见 -->
+          <div id="host-controls" style="display:none; margin-top: 12px;">
+            <h3 style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">总主持人</h3>
+            <button class="control-btn" onclick="autoAssignBreakout()">
+              自动分配到分组
+            </button>
+            <button class="control-btn" onclick="showPasswordModal()">
+              修改入会密码
+            </button>
+            <button class="control-btn" onclick="setMainViewForAll()">
+              设置全员主画面
+            </button>
+          </div>
+        </div>
+
+        <!-- 发送消息 -->
+        <div class="sidebar-section">
+          <h3>发送消息</h3>
+          <div class="message-input">
+            <input type="text" id="msg-input" placeholder="输入消息内容...">
+            <button class="btn btn-sm btn-primary" onclick="sendMessage()">发送</button>
+          </div>
+        </div>
+
+        <!-- 发言请求（主持人端） -->
+        <div class="sidebar-section" id="speak-requests-section" style="display:none;">
+          <h3>发言请求</h3>
+          <div id="speak-requests-list">
+            <div style="color: var(--text-secondary); font-size: 13px;">暂无发言请求</div>
+          </div>
+        </div>
+
+        <!-- 操作日志 -->
+        <div class="sidebar-section">
+          <h3>最近操作</h3>
+          <div id="event-log" style="max-height: 200px; overflow-y: auto; font-size: 12px; color: var(--text-secondary);"></div>
+        </div>
+      </div>
+
+      <!-- 右侧：会议视频区 -->
+      <div class="meeting-main">
+        <!-- 分组标签栏（仅总主持人可见） -->
+        <div class="group-tabs" id="group-tabs" style="display: none;"></div>
+
+        <!-- Jitsi 嵌入容器 -->
+        <div class="jitsi-container" id="jitsi-container"></div>
+
+        <!-- 通知信息栏（透明叠加） -->
+        <div class="notification-bar" id="notification-bar"></div>
+
+        <!-- 普通成员底部工具栏 -->
+        <div id="member-toolbar" style="display:none; padding: 8px 16px; background: var(--bg-white); border-top: 1px solid var(--border); display: flex; gap: 8px; align-items: center;">
+          <button class="btn btn-sm btn-warning" onclick="requestSpeak()" id="btn-request-speak">
+            申请发言
+          </button>
+          <div class="message-input" style="flex: 1; padding: 0;">
+            <input type="text" id="member-msg-input" placeholder="发送消息给主持人...">
+            <button class="btn btn-sm btn-primary" onclick="sendMemberMessage()">发送</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 修改密码模态框 -->
+  <div class="modal-overlay" id="password-modal" style="display: none;">
+    <div class="modal">
+      <div class="modal-header">
+        修改入会密码
+        <button class="btn btn-sm btn-outline" onclick="hidePasswordModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>新密码</label>
+          <input type="text" id="new-password" placeholder="至少4位">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="hidePasswordModal()">取消</button>
+        <button class="btn btn-primary" onclick="changePassword()">确认修改</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/src/utils/api.js"></script>
+  <script src="/src/utils/jitsi.js"></script>
+
+  <script>
+    // ===== 初始化 =====
+    const user = API.getCurrentUser();
+    if (!user || !API.getToken()) {
+      window.location.href = '/public/login.html';
+    }
+
+    // 获取 URL 参数
+    const urlParams = new URLSearchParams(window.location.search);
+    const meetingId = urlParams.get('id');
+    const userRole = user.role;
+
+    if (!meetingId) {
+      alert('缺少会议 ID');
+      window.history.back();
+    }
+
+    // 显示基础信息
+    document.getElementById('meeting-id-display').textContent = `ID: ${meetingId}`;
+    document.getElementById('user-display').textContent = user.displayName;
+    const roleDisplay = document.getElementById('role-display');
+    roleDisplay.textContent = userRole === 'host' ? '总主持人' : userRole === 'moderator' ? '小组主持人' : '成员';
+    roleDisplay.className = `role-badge role-${userRole}`;
+
+    // Jitsi 管理器实例
+    let jitsiMgr = null;
+    // 是否正在录制
+    let isRecording = false;
+    // 事件日志
+    const eventLogs = [];
+
+    /**
+     * 添加事件日志
+     */
+    function addLog(msg) {
+      const time = new Date().toLocaleTimeString('zh-CN');
+      eventLogs.unshift(`[${time}] ${msg}`);
+      if (eventLogs.length > 50) eventLogs.pop();
+      const logEl = document.getElementById('event-log');
+      if (logEl) {
+        logEl.innerHTML = eventLogs.map(l => `<div style="padding: 2px 0; border-bottom: 1px solid var(--border);">${l}</div>`).join('');
+      }
+    }
+
+    /**
+     * 显示通知
+     */
+    function showNotification(msg) {
+      const bar = document.getElementById('notification-bar');
+      const item = document.createElement('div');
+      item.className = 'notification-item';
+      item.textContent = msg;
+      bar.appendChild(item);
+      setTimeout(() => item.remove(), 5000);
+    }
+
+    /**
+     * 初始化会议
+     */
+    async function initMeeting() {
+      try {
+        // 获取入会信息
+        const data = await API.getJoinInfo(meetingId);
+        const joinInfo = data.joinInfo;
+
+        // 更新标题
+        document.getElementById('meeting-title').textContent =
+          joinInfo.group ? joinInfo.group.name : '主会场';
+
+        // 根据角色显示控制面板
+        if (userRole === 'host' || userRole === 'moderator') {
+          document.getElementById('sidebar').style.display = 'flex';
+          document.getElementById('speak-requests-section').style.display = 'block';
+
+          if (userRole === 'host') {
+            document.getElementById('host-controls').style.display = 'block';
+            document.getElementById('group-tabs').style.display = 'flex';
+            loadGroupTabs();
+          }
+        } else {
+          // 普通成员显示底部工具栏
+          document.getElementById('member-toolbar').style.display = 'flex';
+        }
+
+        // 创建 Jitsi 会议
+        const container = document.getElementById('jitsi-container');
+        jitsiMgr = new JitsiManager(container);
+
+        // 注册事件处理
+        jitsiMgr.on('participantJoined', (data) => {
+          addLog(`${data.displayName || '未知'} 加入了会议`);
+          showNotification(`${data.displayName || '未知'} 加入了会议`);
+          updateParticipantCount();
+          updateParticipantList();
+        });
+
+        jitsiMgr.on('participantLeft', (data) => {
+          addLog(`参会者离开了会议`);
+          updateParticipantCount();
+          updateParticipantList();
+        });
+
+        jitsiMgr.on('recordingStatusChanged', (data) => {
+          isRecording = data.on;
+          document.getElementById('recording-status').style.display = isRecording ? 'inline-flex' : 'none';
+          document.getElementById('btn-recording').textContent = isRecording ? '停止录制' : '开始录制';
+          document.getElementById('btn-recording').classList.toggle('active', isRecording);
+          addLog(isRecording ? '录制已开始' : '录制已停止');
+          showNotification(isRecording ? '会议录制已开始' : '会议录制已停止');
+        });
+
+        jitsiMgr.on('raiseHandUpdated', (data) => {
+          if (data.handRaised) {
+            addLog(`有参会者举手`);
+            showSpeakRequest(data);
+          }
+        });
+
+        jitsiMgr.on('audioMuteStatusChanged', (data) => {
+          addLog(data.muted ? '麦克风已静音' : '麦克风已开启');
+        });
+
+        jitsiMgr.on('cameraError', () => {
+          showNotification('摄像头访问出错');
+        });
+
+        jitsiMgr.on('micError', () => {
+          showNotification('麦克风访问出错');
+        });
+
+        jitsiMgr.on('readyToClose', () => {
+          leaveMeeting();
+        });
+
+        // 初始化会议
+        await jitsiMgr.init(joinInfo);
+        addLog('已成功加入会议');
+        updateParticipantCount();
+
+      } catch (err) {
+        console.error('会议初始化失败:', err);
+        document.getElementById('jitsi-container').innerHTML = `
+          <div style="display:flex;align-items:center;justify-content:center;height:100%;color:white;flex-direction:column;">
+            <p style="font-size:18px;margin-bottom:12px;">会议连接失败</p>
+            <p style="font-size:14px;color:#aaa;">${err.message}</p>
+            <button class="btn btn-primary" style="margin-top:20px;" onclick="window.history.back()">返回</button>
+          </div>
+        `;
+      }
+    }
+
+    /**
+     * 更新参会者计数
+     */
+    function updateParticipantCount() {
+      if (!jitsiMgr) return;
+      const count = jitsiMgr.getParticipantsCount();
+      document.getElementById('participant-count').textContent = `${count} 人`;
+    }
+
+    /**
+     * 更新参会者列表（侧边栏）
+     */
+    function updateParticipantList() {
+      if (!jitsiMgr) return;
+      const list = document.getElementById('participants-list');
+      if (!list) return;
+
+      const participants = jitsiMgr.getParticipants();
+      if (participants.size === 0) {
+        list.innerHTML = '<li style="color: var(--text-secondary); font-size: 13px; padding: 8px 0;">暂无其他参会者</li>';
+        return;
+      }
+
+      list.innerHTML = Array.from(participants.values()).map(p => `
+        <li class="participant-item">
+          <div class="participant-info">
+            <div class="participant-avatar">${(p.displayName || '?').charAt(0)}</div>
+            <span style="font-size: 13px;">${p.displayName || '未知'}</span>
+          </div>
+          ${(userRole === 'host' || userRole === 'moderator') ? `
+          <div class="participant-actions">
+            <button class="btn-icon" title="静音" onclick="jitsiMgr.muteParticipant('${p.id}')">M</button>
+            <button class="btn-icon" title="踢出" onclick="jitsiMgr.kickParticipant('${p.id}')">X</button>
+          </div>
+          ` : ''}
+        </li>
+      `).join('');
+    }
+
+    /**
+     * 加载分组标签栏（总主持人用）
+     */
+    async function loadGroupTabs() {
+      try {
+        const meeting = await API.getMeetingDetail(meetingId);
+        const tabs = document.getElementById('group-tabs');
+        const groups = meeting.meeting.groups || [];
+
+        let html = `<div class="group-tab active" onclick="switchRoom('main')">主会场</div>`;
+        groups.forEach(g => {
+          html += `<div class="group-tab" onclick="switchRoom('${g.id}')" data-group="${g.id}">
+            ${g.name} <span class="count">${g.participants?.length || 0}</span>
+          </div>`;
+        });
+        tabs.innerHTML = html;
+
+        // 渲染分组管理区域
+        const groupsSection = document.getElementById('groups-section');
+        if (groups.length > 0) {
+          groupsSection.style.display = 'block';
+          document.getElementById('groups-list').innerHTML = groups.map(g => `
+            <div style="padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px;">
+              <strong>${g.name}</strong>
+              <span style="color: var(--text-secondary);">(${g.participants?.length || 0} 人)</span>
+            </div>
+          `).join('');
+        }
+      } catch (err) {
+        console.error('加载分组失败:', err);
+      }
+    }
+
+    /**
+     * 切换到不同房间（总主持人在多个分组间切换）
+     * 注意：实际实现需要销毁当前 Jitsi 实例并创建新实例
+     */
+    async function switchRoom(groupId) {
+      // 更新标签激活状态
+      document.querySelectorAll('.group-tab').forEach(tab => {
+        tab.classList.toggle('active',
+          (groupId === 'main' && !tab.dataset.group) || tab.dataset.group === groupId
+        );
+      });
+
+      addLog(`切换到: ${groupId === 'main' ? '主会场' : groupId}`);
+      showNotification(`正在切换到${groupId === 'main' ? '主会场' : '分组'}...`);
+
+      // 销毁当前会议并重新加入目标房间
+      if (jitsiMgr) {
+        jitsiMgr.destroy();
+      }
+
+      try {
+        const data = await API.getJoinInfo(meetingId);
+        const joinInfo = data.joinInfo;
+
+        // 修改房间名为目标分组
+        if (groupId !== 'main') {
+          joinInfo.roomName = `${meetingId}-${groupId}`;
+        } else {
+          joinInfo.roomName = `${meetingId}-main`;
+        }
+
+        const container = document.getElementById('jitsi-container');
+        container.innerHTML = '';
+        jitsiMgr = new JitsiManager(container);
+
+        // 重新注册事件
+        jitsiMgr.on('participantJoined', (d) => {
+          addLog(`${d.displayName || '未知'} 加入`);
+          updateParticipantCount();
+          updateParticipantList();
+        });
+        jitsiMgr.on('participantLeft', () => {
+          updateParticipantCount();
+          updateParticipantList();
+        });
+
+        await jitsiMgr.init(joinInfo);
+        document.getElementById('meeting-title').textContent =
+          groupId === 'main' ? '主会场' : groupId;
+      } catch (err) {
+        showNotification('切换房间失败: ' + err.message);
+      }
+    }
+
+    // ===== 控制操作 =====
+
+    function toggleMuteAll() {
+      if (!jitsiMgr) return;
+      jitsiMgr.muteAll();
+      addLog('执行全体静音');
+      showNotification('已全体静音');
+    }
+
+    function toggleUnmuteAll() {
+      addLog('请求全体取消静音');
+      showNotification('已通知全体取消静音');
+    }
+
+    function toggleRecording() {
+      if (!jitsiMgr) return;
+      if (isRecording) {
+        jitsiMgr.stopRecording();
+      } else {
+        jitsiMgr.startRecording();
+      }
+    }
+
+    function shareScreen() {
+      if (!jitsiMgr) return;
+      jitsiMgr.toggleShareScreen();
+    }
+
+    function autoAssignBreakout() {
+      if (!jitsiMgr) return;
+      jitsiMgr.autoAssignToBreakoutRooms();
+      addLog('执行自动分配到分组');
+    }
+
+    function setMainViewForAll() {
+      showNotification('已设置所有人的主画面');
+      addLog('设置全员主画面');
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('msg-input');
+      const msg = input.value.trim();
+      if (!msg) return;
+      if (jitsiMgr) {
+        jitsiMgr.sendNotification(msg);
+      }
+      showNotification('消息已发送: ' + msg);
+      addLog('发送消息: ' + msg);
+      input.value = '';
+    }
+
+    function sendMemberMessage() {
+      const input = document.getElementById('member-msg-input');
+      const msg = input.value.trim();
+      if (!msg) return;
+      if (jitsiMgr) {
+        jitsiMgr.sendNotification(msg);
+      }
+      showNotification('消息已发送');
+      input.value = '';
+    }
+
+    function requestSpeak() {
+      if (jitsiMgr) {
+        jitsiMgr.toggleRaiseHand(true);
+      }
+      showNotification('已发送发言申请');
+      const btn = document.getElementById('btn-request-speak');
+      btn.textContent = '已申请';
+      btn.disabled = true;
+      setTimeout(() => {
+        btn.textContent = '申请发言';
+        btn.disabled = false;
+      }, 10000);
+    }
+
+    function showSpeakRequest(data) {
+      const list = document.getElementById('speak-requests-list');
+      const item = document.createElement('div');
+      item.style.cssText = 'padding: 6px 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;';
+      item.innerHTML = `
+        <span style="font-size: 13px;">参会者请求发言</span>
+        <button class="btn btn-sm btn-success" onclick="this.parentElement.remove()">批准</button>
+      `;
+      list.appendChild(item);
+    }
+
+    function showPasswordModal() {
+      document.getElementById('password-modal').style.display = 'flex';
+    }
+
+    function hidePasswordModal() {
+      document.getElementById('password-modal').style.display = 'none';
+    }
+
+    async function changePassword() {
+      const pw = document.getElementById('new-password').value.trim();
+      if (!pw || pw.length < 4) {
+        alert('密码至少4位');
+        return;
+      }
+      try {
+        await API.changeMeetingPassword(meetingId, pw);
+        hidePasswordModal();
+        showNotification('入会密码已修改');
+        addLog('修改了入会密码');
+      } catch (err) {
+        alert('修改失败: ' + err.message);
+      }
+    }
+
+    function leaveMeeting() {
+      if (jitsiMgr) {
+        jitsiMgr.destroy();
+      }
+      // 返回对应的首页
+      if (userRole === 'host') {
+        window.location.href = '/public/host-home.html';
+      } else if (userRole === 'moderator') {
+        window.location.href = '/public/moderator-home.html';
+      } else {
+        window.location.href = '/public/member-home.html';
+      }
+    }
+
+    // 初始化
+    initMeeting();
+  </script>
+</body>
+</html>

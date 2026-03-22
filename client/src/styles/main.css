@@ -1,0 +1,779 @@
+/**
+ * 会议管理系统 - 全局样式
+ *
+ * 采用简洁现代的设计风格，支持全屏会议视图。
+ * 使用 CSS 变量便于主题定制。
+ */
+
+/* ===== CSS 变量定义 ===== */
+:root {
+  --primary: #1a73e8;          /* 主色调 - 蓝色 */
+  --primary-dark: #1557b0;     /* 主色深色 */
+  --primary-light: #e8f0fe;    /* 主色浅色 */
+  --success: #34a853;          /* 成功绿色 */
+  --danger: #ea4335;           /* 危险红色 */
+  --warning: #fbbc04;          /* 警告黄色 */
+  --info: #4285f4;             /* 信息蓝色 */
+  --text: #202124;             /* 主文字 */
+  --text-secondary: #5f6368;   /* 次要文字 */
+  --bg: #f8f9fa;               /* 页面背景 */
+  --bg-white: #ffffff;         /* 卡片背景 */
+  --border: #dadce0;           /* 边框颜色 */
+  --shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08);
+  --shadow-lg: 0 4px 6px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06);
+  --radius: 8px;               /* 圆角大小 */
+  --radius-sm: 4px;            /* 小圆角 */
+  --sidebar-width: 280px;      /* 侧边栏宽度 */
+}
+
+/* ===== 全局重置 ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
+  line-height: 1.5;
+}
+
+a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* ===== 布局容器 ===== */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* 顶部导航栏 */
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  height: 56px;
+  background: var(--bg-white);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  z-index: 100;
+}
+
+.navbar-brand {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.navbar-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.navbar-user .role-badge {
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.role-host { background: #fce8e6; color: #c5221f; }
+.role-moderator { background: #e8f0fe; color: #1a73e8; }
+.role-member { background: #e6f4ea; color: #137333; }
+
+/* ===== 主内容区域 ===== */
+.main-content {
+  flex: 1;
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ===== 登录页面 ===== */
+.login-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.login-box {
+  background: var(--bg-white);
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  width: 400px;
+  max-width: 90vw;
+}
+
+.login-box h1 {
+  text-align: center;
+  margin-bottom: 8px;
+  color: var(--text);
+  font-size: 24px;
+}
+
+.login-box .subtitle {
+  text-align: center;
+  color: var(--text-secondary);
+  margin-bottom: 32px;
+}
+
+/* 登录页 Tab 切换 */
+.login-tabs {
+  display: flex;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 24px;
+}
+
+.login-tab {
+  flex: 1;
+  padding: 10px;
+  text-align: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.2s;
+}
+
+.login-tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  font-weight: 500;
+}
+
+.login-tab:hover {
+  color: var(--primary);
+  background: var(--primary-light);
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+/* ===== 表单元素 ===== */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  transition: border-color 0.2s;
+  outline: none;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-light);
+}
+
+/* ===== 按钮 ===== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  gap: 6px;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--primary-dark);
+}
+
+.btn-success {
+  background: var(--success);
+  color: white;
+}
+
+.btn-success:hover:not(:disabled) {
+  background: #2d8f47;
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #c5221f;
+}
+
+.btn-warning {
+  background: var(--warning);
+  color: var(--text);
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.btn-outline:hover {
+  background: var(--bg);
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.btn-lg {
+  padding: 12px 28px;
+  font-size: 16px;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+/* ===== 卡片 ===== */
+.card {
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.card-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.card-body {
+  padding: 20px;
+}
+
+/* ===== 网格布局 ===== */
+.grid {
+  display: grid;
+  gap: 20px;
+}
+
+.grid-2 { grid-template-columns: repeat(2, 1fr); }
+.grid-3 { grid-template-columns: repeat(3, 1fr); }
+.grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+@media (max-width: 768px) {
+  .grid-2, .grid-3, .grid-4 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===== 会议页面布局 ===== */
+.meeting-layout {
+  display: flex;
+  height: calc(100vh - 56px);
+  overflow: hidden;
+}
+
+/* 侧边栏（控制面板） */
+.meeting-sidebar {
+  width: var(--sidebar-width);
+  background: var(--bg-white);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.meeting-sidebar .sidebar-section {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.meeting-sidebar .sidebar-section h3 {
+  font-size: 13px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  letter-spacing: 0.5px;
+}
+
+/* 会议视频区域 */
+.meeting-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: #1a1a2e;
+}
+
+/* Jitsi iframe 容器 */
+.jitsi-container {
+  flex: 1;
+  position: relative;
+}
+
+.jitsi-container iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* 通知信息栏（透明叠加在视频上方） */
+.notification-bar {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  max-width: 350px;
+  z-index: 10;
+}
+
+.notification-item {
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  margin-bottom: 8px;
+  font-size: 13px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== 状态面板 ===== */
+.status-panel {
+  display: flex;
+  gap: 16px;
+  padding: 12px 16px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-dot.online { background: var(--success); }
+.status-dot.offline { background: var(--danger); }
+.status-dot.recording { background: var(--danger); animation: blink 1s infinite; }
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* ===== 参会者列表 ===== */
+.participant-list {
+  list-style: none;
+}
+
+.participant-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.participant-item:last-child {
+  border-bottom: none;
+}
+
+.participant-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.participant-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--primary-light);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.participant-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.participant-actions .btn-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.participant-actions .btn-icon:hover {
+  background: var(--bg);
+}
+
+.participant-actions .btn-icon.active {
+  color: var(--danger);
+}
+
+/* ===== 分组标签页 ===== */
+.group-tabs {
+  display: flex;
+  gap: 0;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.group-tab {
+  padding: 10px 20px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+
+.group-tab:hover {
+  color: var(--primary);
+  background: var(--primary-light);
+}
+
+.group-tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  font-weight: 500;
+}
+
+.group-tab .count {
+  background: var(--border);
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 11px;
+  margin-left: 6px;
+}
+
+/* ===== 配置编辑器布局 ===== */
+.config-editor-layout {
+  display: flex;
+  height: calc(100vh - 56px);
+  overflow: hidden;
+}
+
+.config-editor-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.config-editor-sidebar {
+  width: 350px;
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  background: var(--bg-white);
+}
+
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--bg-white);
+  border-bottom: 1px solid var(--border);
+}
+
+.editor-container {
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ===== 消息提示 ===== */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+}
+
+.toast {
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  margin-bottom: 8px;
+  color: white;
+  font-size: 14px;
+  animation: slideIn 0.3s ease;
+  max-width: 400px;
+}
+
+.toast-success { background: var(--success); }
+.toast-error { background: var(--danger); }
+.toast-warning { background: var(--warning); color: var(--text); }
+.toast-info { background: var(--info); }
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(100px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* ===== 模态框 ===== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: var(--bg-white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.modal-footer {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ===== 表格 ===== */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.table th {
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.table tr:hover {
+  background: var(--bg);
+}
+
+/* ===== 工具提示 ===== */
+.tooltip {
+  position: relative;
+  cursor: help;
+}
+
+.tooltip::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text);
+  color: white;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.tooltip:hover::after {
+  opacity: 1;
+}
+
+/* ===== 空状态 ===== */
+.empty-state {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--text-secondary);
+}
+
+.empty-state .icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+/* ===== 加载指示器 ===== */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ===== 视频画面网格（总主持人轮播视图） ===== */
+.video-grid {
+  display: grid;
+  gap: 4px;
+  padding: 4px;
+  height: 100%;
+}
+
+.video-grid.grid-2x2 { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); }
+.video-grid.grid-2x3 { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); }
+.video-grid.grid-2x4 { grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr); }
+
+.video-cell {
+  background: #2d2d44;
+  border-radius: var(--radius-sm);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.video-cell .name-tag {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(0,0,0,0.6);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 768px) {
+  .meeting-sidebar {
+    display: none;
+  }
+
+  .main-content {
+    padding: 12px;
+  }
+
+  .config-editor-layout {
+    flex-direction: column;
+  }
+
+  .config-editor-sidebar {
+    width: 100%;
+    max-height: 300px;
+  }
+
+  .login-box {
+    padding: 24px;
+  }
+}

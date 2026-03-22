@@ -1,0 +1,25 @@
+{
+  "name": "jitsi-meeting-manager",
+  "version": "1.0.0",
+  "description": "基于 Jitsi 的会议业务管理系统 - 支持主会场、分组会议、角色权限管理",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node server/index.js",
+    "build": "echo 'Static frontend, no build needed'"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "js-yaml": "^4.1.0",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "morgan": "^1.10.0",
+    "cookie-parser": "^1.4.6",
+    "uuid": "^9.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

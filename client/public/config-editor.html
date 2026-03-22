@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>会议管理系统 - 配置编辑</title>
+  <link rel="stylesheet" href="/src/styles/main.css">
+  <!-- Monaco Editor CDN -->
+  <style>
+    /* 编辑器区域需要精确尺寸 */
+    #editor-wrapper {
+      flex: 1;
+      position: relative;
+    }
+    #yaml-editor {
+      width: 100%;
+      height: 100%;
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      font-size: 14px;
+      padding: 16px;
+      border: none;
+      outline: none;
+      resize: none;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      tab-size: 2;
+      line-height: 1.6;
+    }
+    .validation-result {
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+    .validation-error {
+      background: #fce8e6;
+      color: #c5221f;
+      border-left: 3px solid #ea4335;
+    }
+    .validation-warning {
+      background: #fef7e0;
+      color: #b36d00;
+      border-left: 3px solid #fbbc04;
+    }
+    .validation-success {
+      background: #e6f4ea;
+      color: #137333;
+      border-left: 3px solid #34a853;
+    }
+    .backup-item {
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .backup-item:last-child { border-bottom: none; }
+    .preview-section {
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 12px;
+    }
+    .preview-section h4 {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container" style="height: 100vh;">
+    <!-- 顶部导航栏 -->
+    <nav class="navbar" style="height: 48px;">
+      <div class="navbar-brand" style="font-size: 15px;">
+        <a href="/public/host-home.html" style="color: var(--text-secondary); margin-right: 8px;">← 返回</a>
+        配置文件编辑器
+      </div>
+      <div class="navbar-user">
+        <span id="user-name" style="font-size: 13px;"></span>
+        <button class="btn btn-sm btn-outline" onclick="API.logout()">退出</button>
+      </div>
+    </nav>
+
+    <!-- 编辑器工具栏 -->
+    <div class="editor-toolbar">
+      <button class="btn btn-sm btn-outline" onclick="loadConfig()">载入当前配置</button>
+      <button class="btn btn-sm btn-outline" onclick="validateConfig()">校验配置</button>
+      <button class="btn btn-sm btn-success" onclick="saveConfig()">保存配置</button>
+      <button class="btn btn-sm btn-outline" onclick="loadDefaultConfig()">恢复默认</button>
+      <span style="flex:1;"></span>
+      <span style="font-size: 12px; color: var(--text-secondary);" id="editor-status">就绪</span>
+    </div>
+
+    <!-- 编辑器主体 -->
+    <div class="config-editor-layout">
+      <!-- 左侧：YAML 编辑器 -->
+      <div class="config-editor-main">
+        <div id="editor-wrapper">
+          <textarea id="yaml-editor" spellcheck="false" placeholder="# 在此编辑 YAML 配置文件..."></textarea>
+        </div>
+      </div>
+
+      <!-- 右侧：配置说明、预览和备份 -->
+      <div class="config-editor-sidebar">
+        <!-- Tab 切换 -->
+        <div style="display: flex; border-bottom: 1px solid var(--border);">
+          <div class="group-tab active" onclick="switchSidebarTab('validate')" data-stab="validate">校验结果</div>
+          <div class="group-tab" onclick="switchSidebarTab('preview')" data-stab="preview">配置预览</div>
+          <div class="group-tab" onclick="switchSidebarTab('backups')" data-stab="backups">历史版本</div>
+        </div>
+
+        <!-- 校验结果 -->
+        <div class="sidebar-tab-content" id="stab-validate" style="padding: 16px;">
+          <div id="validation-output">
+            <div style="color: var(--text-secondary); font-size: 13px;">点击"校验配置"按钮检查配置文件</div>
+          </div>
+        </div>
+
+        <!-- 配置预览 -->
+        <div class="sidebar-tab-content" id="stab-preview" style="padding: 16px; display: none;">
+          <div id="preview-output">
+            <div style="color: var(--text-secondary); font-size: 13px;">保存或校验配置后自动预览</div>
+          </div>
+        </div>
+
+        <!-- 历史版本 -->
+        <div class="sidebar-tab-content" id="stab-backups" style="padding: 16px; display: none;">
+          <button class="btn btn-sm btn-outline btn-block" onclick="loadBackups()" style="margin-bottom: 12px;">刷新版本列表</button>
+          <div id="backups-list">
+            <div class="loading"><div class="spinner" style="width:24px;height:24px;"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 消息提示 -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="/src/utils/api.js"></script>
+  <script>
+    // 检查权限
+    const user = API.getCurrentUser();
+    if (!user || !API.getToken() || user.role !== 'host') {
+      window.location.href = '/public/login.html';
+    }
+    document.getElementById('user-name').textContent = user.displayName;
+
+    /**
+     * 显示消息提示
+     */
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 4000);
+    }
+
+    /**
+     * 更新编辑器状态显示
+     */
+    function setStatus(text) {
+      document.getElementById('editor-status').textContent = text;
+    }
+
+    /**
+     * 切换右侧标签页
+     */
+    function switchSidebarTab(tab) {
+      document.querySelectorAll('[data-stab]').forEach(el => {
+        el.classList.toggle('active', el.dataset.stab === tab);
+      });
+      document.querySelectorAll('.sidebar-tab-content').forEach(el => {
+        el.style.display = el.id === `stab-${tab}` ? 'block' : 'none';
+      });
+    }
+
+    /**
+     * 加载当前配置到编辑器
+     */
+    async function loadConfig() {
+      setStatus('加载中...');
+      try {
+        const data = await API.getConfigRaw();
+        document.getElementById('yaml-editor').value = data.content;
+        setStatus('已加载当前配置');
+        showToast('配置已加载', 'success');
+      } catch (err) {
+        showToast('加载失败: ' + err.message, 'error');
+        setStatus('加载失败');
+      }
+    }
+
+    /**
+     * 加载默认配置
+     */
+    async function loadDefaultConfig() {
+      if (!confirm('确定要恢复默认配置吗？当前编辑器内容将被覆盖。')) return;
+      try {
+        // 默认配置也通过 API 获取
+        const data = await API.getConfigRaw();
+        document.getElementById('yaml-editor').value = data.content;
+        setStatus('已恢复默认配置');
+        showToast('已恢复默认配置', 'info');
+      } catch (err) {
+        showToast('操作失败', 'error');
+      }
+    }
+
+    /**
+     * 校验配置
+     */
+    async function validateConfig() {
+      const content = document.getElementById('yaml-editor').value;
+      if (!content.trim()) {
+        showToast('配置内容为空', 'warning');
+        return;
+      }
+
+      setStatus('校验中...');
+      const output = document.getElementById('validation-output');
+
+      try {
+        const result = await API.validateConfigApi(content);
+        let html = '';
+
+        if (result.errors && result.errors.length > 0) {
+          html += result.errors.map(e => `
+            <div class="validation-result validation-error">错误: ${e}</div>
+          `).join('');
+        }
+
+        if (result.warnings && result.warnings.length > 0) {
+          html += result.warnings.map(w => `
+            <div class="validation-result validation-warning">警告: ${w}</div>
+          `).join('');
+        }
+
+        if ((!result.errors || result.errors.length === 0) && (!result.warnings || result.warnings.length === 0)) {
+          html = '<div class="validation-result validation-success">配置校验通过，无错误和警告</div>';
+        } else if (!result.errors || result.errors.length === 0) {
+          html = '<div class="validation-result validation-success">配置格式正确（有警告信息）</div>' + html;
+        }
+
+        output.innerHTML = html;
+        switchSidebarTab('validate');
+
+        // 同时更新预览
+        updatePreview(content);
+
+        setStatus(result.errors?.length ? '校验未通过' : '校验通过');
+      } catch (err) {
+        output.innerHTML = `<div class="validation-result validation-error">校验失败: ${err.message}</div>`;
+        setStatus('校验失败');
+      }
+    }
+
+    /**
+     * 保存配置
+     */
+    async function saveConfig() {
+      const content = document.getElementById('yaml-editor').value;
+      if (!content.trim()) {
+        showToast('配置内容为空', 'warning');
+        return;
+      }
+
+      if (!confirm('确定要保存配置吗？保存后将立即生效。')) return;
+
+      setStatus('保存中...');
+      try {
+        const result = await API.saveConfig(content);
+        showToast('配置已保存并生效', 'success');
+        setStatus('已保存');
+
+        // 显示警告
+        if (result.warnings && result.warnings.length > 0) {
+          const output = document.getElementById('validation-output');
+          output.innerHTML = '<div class="validation-result validation-success">保存成功</div>' +
+            result.warnings.map(w => `<div class="validation-result validation-warning">警告: ${w}</div>`).join('');
+          switchSidebarTab('validate');
+        }
+
+        // 刷新备份列表
+        loadBackups();
+        updatePreview(content);
+      } catch (err) {
+        showToast('保存失败: ' + err.message, 'error');
+        setStatus('保存失败');
+
+        // 显示错误详情
+        if (err.message.includes('校验')) {
+          switchSidebarTab('validate');
+        }
+      }
+    }
+
+    /**
+     * 更新配置预览
+     */
+    function updatePreview(yamlContent) {
+      try {
+        // 简单解析 YAML 进行预览（前端简单解析）
+        const previewEl = document.getElementById('preview-output');
+        let html = '';
+
+        // 尝试提取关键信息用于预览
+        const lines = yamlContent.split('\n');
+        let inUsers = false;
+        let inGroups = false;
+        let userCount = 0;
+        let groupCount = 0;
+
+        lines.forEach(line => {
+          if (line.startsWith('users:')) inUsers = true;
+          if (line.startsWith('meeting:')) inUsers = false;
+          if (line.match(/^\s+- id:/)) {
+            if (inUsers) userCount++;
+            if (inGroups) groupCount++;
+          }
+          if (line.match(/^\s+groups:/)) { inGroups = true; inUsers = false; }
+          if (line.match(/^[a-z]/) && !line.startsWith(' ')) { inGroups = false; }
+        });
+
+        html += `
+          <div class="preview-section">
+            <h4>概览</h4>
+            <div style="font-size: 13px;">
+              <div>用户数量: <strong>${userCount}</strong></div>
+              <div>分组数量: <strong>${groupCount}</strong></div>
+            </div>
+          </div>
+        `;
+
+        previewEl.innerHTML = html || '<div style="color: var(--text-secondary);">无法解析预览</div>';
+      } catch (e) {
+        // 预览解析失败不影响主流程
+      }
+    }
+
+    /**
+     * 加载备份版本列表
+     */
+    async function loadBackups() {
+      const container = document.getElementById('backups-list');
+      try {
+        const data = await API.getBackups(10);
+        if (!data.backups || data.backups.length === 0) {
+          container.innerHTML = '<div style="color: var(--text-secondary); font-size: 13px;">暂无历史版本</div>';
+          return;
+        }
+        container.innerHTML = data.backups.map(b => `
+          <div class="backup-item">
+            <div>
+              <div style="font-size: 13px; font-weight: 500;">${new Date(b.createdAt).toLocaleString('zh-CN')}</div>
+              <div style="font-size: 12px; color: var(--text-secondary);">操作人: ${b.operator} | ${Math.round(b.size/1024)}KB</div>
+            </div>
+            <div style="display: flex; gap: 4px;">
+              <button class="btn btn-sm btn-outline" onclick="viewBackup('${b.filename}')">查看</button>
+              <button class="btn btn-sm btn-warning" onclick="rollback('${b.filename}')">回滚</button>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        container.innerHTML = '<div style="color: var(--danger); font-size: 13px;">加载失败</div>';
+      }
+    }
+
+    /**
+     * 查看备份内容
+     */
+    async function viewBackup(filename) {
+      try {
+        const data = await API.getBackupContent(filename);
+        document.getElementById('yaml-editor').value = data.content;
+        setStatus('已加载备份: ' + filename);
+        showToast('已加载备份版本（尚未保存）', 'info');
+      } catch (err) {
+        showToast('加载备份失败: ' + err.message, 'error');
+      }
+    }
+
+    /**
+     * 回滚到指定版本
+     */
+    async function rollback(filename) {
+      if (!confirm('确定要回滚到此版本吗？当前配置将被覆盖并自动备份。')) return;
+      try {
+        await API.rollbackConfigApi(filename);
+        showToast('已回滚到指定版本', 'success');
+        loadConfig();
+        loadBackups();
+      } catch (err) {
+        showToast('回滚失败: ' + err.message, 'error');
+      }
+    }
+
+    // 键盘快捷键
+    document.getElementById('yaml-editor').addEventListener('keydown', function(e) {
+      // Ctrl+S 保存
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        saveConfig();
+      }
+      // Tab 键插入空格
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = this.selectionStart;
+        const end = this.selectionEnd;
+        this.value = this.value.substring(0, start) + '  ' + this.value.substring(end);
+        this.selectionStart = this.selectionEnd = start + 2;
+      }
+    });
+
+    // 页面初始化
+    loadConfig();
+    loadBackups();
+  </script>
+</body>
+</html>

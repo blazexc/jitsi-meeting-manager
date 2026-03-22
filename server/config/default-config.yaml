@@ -1,0 +1,229 @@
+# ============================================================
+# 会议系统配置文件
+# 本文件定义了系统的所有配置项，包括系统设置、角色权限、
+# 会议模板、用户列表、录制策略和通知模板。
+# ============================================================
+
+# --- 系统配置 ---
+system:
+  # 系统显示名称
+  name: "会议管理系统"
+  # Jitsi 服务域名（自托管）
+  jitsiDomain: "room.shukunnet.com"
+  # Jitsi 服务端口（如果非标准端口）
+  jitsiPort: 8443
+  # 会议房间名称前缀，避免与其他系统冲突
+  meetingPrefix: "mtg"
+  # 功能开关
+  features:
+    # 是否启用录制按钮
+    recording: true
+    # 是否启用转写按钮
+    transcription: false
+    # 是否启用聊天功能
+    chat: true
+    # 是否启用屏幕共享
+    screenShare: true
+    # 是否启用 breakout rooms（分组会议室）
+    breakoutRooms: true
+    # 是否启用文件共享
+    fileShare: true
+    # 是否启用白板
+    whiteboard: false
+
+# --- 角色配置 ---
+roles:
+  # 总主持人角色定义
+  host:
+    # 角色显示名称
+    displayName: "总主持人"
+    # 允许的操作列表
+    permissions:
+      - "enter_main_room"        # 进入主会场
+      - "view_all_rooms"         # 查看所有分组
+      - "create_breakout_room"   # 创建分组
+      - "close_breakout_room"    # 关闭分组
+      - "assign_members"         # 分配成员到分组
+      - "move_members"           # 跨组移动成员
+      - "start_recording"        # 开始录制
+      - "stop_recording"         # 停止录制
+      - "send_notification"      # 发送通知
+      - "mute_all"               # 全体静音
+      - "unmute_member"          # 取消单人静音
+      - "toggle_camera"          # 控制摄像头
+      - "toggle_speaker"         # 控制扬声器
+      - "approve_speak"          # 批准发言请求
+      - "share_file"             # 共享文件
+      - "set_main_view"          # 设置主画面（可覆盖）
+      - "edit_config"            # 编辑配置
+      - "change_meeting_password" # 修改入会密码
+      - "create_meeting"         # 创建会议
+  # 小组主持人角色定义
+  moderator:
+    displayName: "小组主持人"
+    permissions:
+      - "enter_main_room"
+      - "view_own_group"         # 查看本组
+      - "start_recording"
+      - "stop_recording"
+      - "send_notification"
+      - "mute_all_group"         # 本组全体静音
+      - "unmute_member"
+      - "toggle_camera"
+      - "toggle_speaker"
+      - "approve_speak"
+      - "share_file"
+      - "set_main_view"
+      - "create_meeting"
+  # 普通成员角色定义
+  member:
+    displayName: "普通成员"
+    permissions:
+      - "enter_authorized_room"  # 进入授权房间
+      - "request_speak"          # 申请发言
+      - "send_message"           # 发送文字消息
+      - "view_shared_file"       # 查看共享文件
+
+# --- 会议模板配置 ---
+meeting:
+  # 主会场名称
+  mainRoom: "主会场"
+  # 入会默认密码（普通成员用链接+密码入会）
+  defaultPassword: "meeting123"
+  # 分组列表
+  groups:
+    - id: "group1"
+      name: "第一组"
+      # 该组默认主持人的用户ID
+      moderatorId: "mod1"
+      # 是否允许自动分配成员
+      autoAssign: false
+    - id: "group2"
+      name: "第二组"
+      moderatorId: "mod2"
+      autoAssign: false
+    - id: "group3"
+      name: "第三组"
+      moderatorId: "mod3"
+      autoAssign: false
+
+# --- 用户与成员配置 ---
+users:
+  # 总主持人账号
+  - id: "host1"
+    username: "admin"
+    # 密码（bcrypt 加密后存储，这里是明文仅供初始化）
+    password: "admin123"
+    role: "host"
+    group: ""
+    displayName: "管理员"
+    canRecord: true
+    canTranscribe: true
+  # 小组主持人账号
+  - id: "mod1"
+    username: "moderator1"
+    password: "mod123"
+    role: "moderator"
+    group: "group1"
+    displayName: "第一组主持人"
+    canRecord: true
+    canTranscribe: false
+  - id: "mod2"
+    username: "moderator2"
+    password: "mod123"
+    role: "moderator"
+    group: "group2"
+    displayName: "第二组主持人"
+    canRecord: true
+    canTranscribe: false
+  - id: "mod3"
+    username: "moderator3"
+    password: "mod123"
+    role: "moderator"
+    group: "group3"
+    displayName: "第三组主持人"
+    canRecord: true
+    canTranscribe: false
+  # 普通成员
+  - id: "user1"
+    username: "user1"
+    password: "user123"
+    role: "member"
+    group: "group1"
+    displayName: "成员一"
+    canRecord: false
+    canTranscribe: false
+  - id: "user2"
+    username: "user2"
+    password: "user123"
+    role: "member"
+    group: "group1"
+    displayName: "成员二"
+    canRecord: false
+    canTranscribe: false
+  - id: "user3"
+    username: "user3"
+    password: "user123"
+    role: "member"
+    group: "group2"
+    displayName: "成员三"
+    canRecord: false
+    canTranscribe: false
+  - id: "user4"
+    username: "user4"
+    password: "user123"
+    role: "member"
+    group: "group2"
+    displayName: "成员四"
+    canRecord: false
+    canTranscribe: false
+  - id: "user5"
+    username: "user5"
+    password: "user123"
+    role: "member"
+    group: "group3"
+    displayName: "成员五"
+    canRecord: false
+    canTranscribe: false
+  - id: "user6"
+    username: "user6"
+    password: "user123"
+    role: "member"
+    group: "group3"
+    displayName: "成员六"
+    canRecord: false
+    canTranscribe: false
+
+# --- 录制策略配置 ---
+recording:
+  # 默认是否录制
+  defaultEnabled: false
+  # 允许录制的角色
+  allowedRoles:
+    - "host"
+    - "moderator"
+  # 允许录制的房间（空数组表示所有房间）
+  allowedRooms: []
+  # 是否允许小组独立录制
+  allowGroupRecording: true
+  # 是否允许独立开启转写
+  allowTranscription: false
+
+# --- 通知配置 ---
+notifications:
+  # 是否启用系统通知
+  enabled: true
+  # 通知模板
+  templates:
+    # 加入会场通知
+    join: "{displayName} 已加入 {roomName}"
+    # 分组调度通知
+    assign: "您已被分配到 {groupName}"
+    # 录制开始通知
+    recordStart: "会议录制已开始"
+    # 录制结束通知
+    recordStop: "会议录制已结束"
+    # 分组创建通知
+    groupCreate: "分组 {groupName} 已创建"
+    # 分组关闭通知
+    groupClose: "分组 {groupName} 已关闭"

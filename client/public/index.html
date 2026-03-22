@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>会议管理系统</title>
+  <link rel="stylesheet" href="/src/styles/main.css">
+</head>
+<body>
+  <!-- 首页自动根据登录状态跳转 -->
+  <div class="loading" style="min-height: 100vh;">
+    <div class="spinner"></div>
+  </div>
+
+  <script src="/src/utils/api.js"></script>
+  <script>
+    // 检查登录状态并跳转到对应页面
+    (function() {
+      const user = API.getCurrentUser();
+      const token = API.getToken();
+
+      if (!user || !token) {
+        // 未登录，跳转到登录页
+        window.location.href = '/public/login.html';
+        return;
+      }
+
+      // 根据角色跳转到对应首页
+      switch (user.role) {
+        case 'host':
+          window.location.href = '/public/host-home.html';
+          break;
+        case 'moderator':
+          window.location.href = '/public/moderator-home.html';
+          break;
+        default:
+          window.location.href = '/public/member-home.html';
+          break;
+      }
+    })();
+  </script>
+</body>
+</html>

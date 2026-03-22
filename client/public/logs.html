@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>会议管理系统 - 操作日志</title>
+  <link rel="stylesheet" href="/src/styles/main.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- 顶部导航栏 -->
+    <nav class="navbar">
+      <div class="navbar-brand">
+        <a href="/public/host-home.html" style="color: var(--text-secondary); margin-right: 8px;">← 返回</a>
+        操作日志
+      </div>
+      <div class="navbar-user">
+        <span id="user-name"></span>
+        <button class="btn btn-sm btn-outline" onclick="API.logout()">退出</button>
+      </div>
+    </nav>
+
+    <!-- 主内容 -->
+    <div class="main-content" style="max-width: 1000px;">
+      <!-- 筛选工具栏 -->
+      <div class="card" style="margin-bottom: 16px;">
+        <div class="card-body" style="display: flex; gap: 12px; align-items: center;">
+          <div class="form-group" style="margin: 0; flex: 1;">
+            <select id="action-filter" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm);">
+              <option value="">全部操作类型</option>
+              <option value="user_login">用户登录</option>
+              <option value="user_logout">用户登出</option>
+              <option value="config_save">保存配置</option>
+              <option value="config_rollback">回滚配置</option>
+              <option value="meeting_create">创建会议</option>
+              <option value="meeting_end">结束会议</option>
+              <option value="member_assign">分配成员</option>
+              <option value="member_move">移动成员</option>
+              <option value="password_change">修改密码</option>
+              <option value="guest_join">访客入会</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="loadLogs()">查询</button>
+          <button class="btn btn-outline" onclick="document.getElementById('action-filter').value='';loadLogs()">重置</button>
+        </div>
+      </div>
+
+      <!-- 日志列表 -->
+      <div class="card">
+        <div class="card-header">
+          操作记录
+          <span style="font-size: 12px; color: var(--text-secondary);" id="log-count"></span>
+        </div>
+        <div class="card-body" id="log-container">
+          <div class="loading"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/src/utils/api.js"></script>
+  <script>
+    // 检查权限
+    const user = API.getCurrentUser();
+    if (!user || !API.getToken() || user.role !== 'host') {
+      window.location.href = '/public/login.html';
+    }
+    document.getElementById('user-name').textContent = user.displayName;
+
+    // 操作类型中文映射
+    const actionLabels = {
+      'user_login': '用户登录',
+      'user_logout': '用户登出',
+      'config_save': '保存配置',
+      'config_rollback': '回滚配置',
+      'meeting_create': '创建会议',
+      'meeting_end': '结束会议',
+      'member_assign': '分配成员',
+      'member_move': '移动成员',
+      'password_change': '修改密码',
+      'guest_join': '访客入会'
+    };
+
+    /**
+     * 加载日志列表
+     */
+    async function loadLogs() {
+      const container = document.getElementById('log-container');
+      const action = document.getElementById('action-filter').value;
+      container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+      try {
+        const data = await API.getLogsApi(200, action || null);
+        const logs = data.logs || [];
+
+        document.getElementById('log-count').textContent = `共 ${logs.length} 条`;
+
+        if (logs.length === 0) {
+          container.innerHTML = '<div class="empty-state"><p>暂无操作记录</p></div>';
+          return;
+        }
+
+        container.innerHTML = `<table class="table">
+          <thead>
+            <tr>
+              <th>时间</th>
+              <th>操作类型</th>
+              <th>操作人</th>
+              <th>详情</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${logs.map(log => `
+              <tr>
+                <td style="white-space: nowrap; font-size: 13px;">${new Date(log.timestamp).toLocaleString('zh-CN')}</td>
+                <td><span class="role-badge role-moderator" style="font-size: 11px;">${actionLabels[log.action] || log.action}</span></td>
+                <td>${log.operator}</td>
+                <td style="font-size: 13px; max-width: 400px; overflow: hidden; text-overflow: ellipsis;">${log.detail}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>`;
+      } catch (err) {
+        container.innerHTML = `<div class="empty-state"><p>加载失败: ${err.message}</p></div>`;
+      }
+    }
+
+    // 初始化
+    loadLogs();
+  </script>
+</body>
+</html>

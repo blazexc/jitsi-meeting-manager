@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>会议管理系统 - 普通成员</title>
+  <link rel="stylesheet" href="/src/styles/main.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- 顶部导航栏 -->
+    <nav class="navbar">
+      <div class="navbar-brand">会议管理系统</div>
+      <div class="navbar-user">
+        <span id="user-name"></span>
+        <span class="role-badge role-member" id="user-role"></span>
+        <button class="btn btn-sm btn-outline" onclick="API.logout()">退出</button>
+      </div>
+    </nav>
+
+    <!-- 主内容：加入会议 -->
+    <div class="main-content">
+      <div style="max-width: 500px; margin: 60px auto;">
+        <div class="card">
+          <div class="card-header">加入会议</div>
+          <div class="card-body">
+            <form onsubmit="joinMeeting(event)">
+              <div class="form-group">
+                <label>会议 ID</label>
+                <input type="text" id="meeting-id" placeholder="请输入会议 ID 或由主持人提供" required>
+              </div>
+              <button type="submit" class="btn btn-primary btn-block btn-lg" id="join-btn">加入会议</button>
+            </form>
+            <div id="error-msg" style="color: var(--danger); margin-top: 12px; display: none;"></div>
+          </div>
+        </div>
+
+        <!-- 当前会议列表 -->
+        <div class="card" style="margin-top: 20px;">
+          <div class="card-header">
+            当前可加入的会议
+            <button class="btn btn-sm btn-outline" onclick="loadMeetings()">刷新</button>
+          </div>
+          <div class="card-body" id="meeting-list">
+            <div class="loading"><div class="spinner"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/src/utils/api.js"></script>
+  <script>
+    // 检查登录状态
+    const user = API.getCurrentUser();
+    if (!user || !API.getToken()) {
+      window.location.href = '/public/login.html';
+    }
+
+    // 显示用户信息
+    document.getElementById('user-name').textContent = user.displayName;
+    document.getElementById('user-role').textContent = '普通成员';
+
+    /**
+     * 加入会议
+     */
+    async function joinMeeting(e) {
+      e.preventDefault();
+      const meetingId = document.getElementById('meeting-id').value.trim();
+      const errorEl = document.getElementById('error-msg');
+      errorEl.style.display = 'none';
+
+      try {
+        // 直接跳转到会议页面
+        window.location.href = `/public/meeting.html?id=${meetingId}`;
+      } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.style.display = 'block';
+      }
+    }
+
+    /**
+     * 加载可加入的会议列表
+     */
+    async function loadMeetings() {
+      const container = document.getElementById('meeting-list');
+      try {
+        const data = await API.getMeetings();
+        if (data.meetings.length === 0) {
+          container.innerHTML = '<div class="empty-state"><p>暂无进行中的会议</p></div>';
+          return;
+        }
+        container.innerHTML = data.meetings.map(m => `
+          <div class="participant-item">
+            <div class="participant-info">
+              <div>
+                <strong>${m.name}</strong>
+                <div style="font-size: 12px; color: var(--text-secondary);">
+                  ID: ${m.id} | ${m.groupCount} 个分组
+                </div>
+              </div>
+            </div>
+            <button class="btn btn-sm btn-primary" onclick="window.location.href='/public/meeting.html?id=${m.id}'">
+              加入
+            </button>
+          </div>
+        `).join('');
+      } catch (err) {
+        container.innerHTML = '<div class="empty-state"><p>加载失败</p></div>';
+      }
+    }
+
+    // 页面加载时获取会议列表
+    loadMeetings();
+  </script>
+</body>
+</html>

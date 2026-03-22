@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>会议管理系统 - 小组主持人</title>
+  <link rel="stylesheet" href="/src/styles/main.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- 顶部导航栏 -->
+    <nav class="navbar">
+      <div class="navbar-brand">会议管理系统</div>
+      <div class="navbar-user">
+        <span id="user-name"></span>
+        <span class="role-badge role-moderator" id="user-role"></span>
+        <button class="btn btn-sm btn-outline" onclick="API.logout()">退出</button>
+      </div>
+    </nav>
+
+    <!-- 主内容 -->
+    <div class="main-content">
+      <div class="grid grid-2" style="max-width: 900px; margin: 40px auto;">
+
+        <!-- 加入会议卡片 -->
+        <div class="card">
+          <div class="card-header">加入会议</div>
+          <div class="card-body">
+            <form onsubmit="joinMeeting(event)">
+              <div class="form-group">
+                <label>会议 ID</label>
+                <input type="text" id="join-meeting-id" placeholder="输入会议 ID" required>
+              </div>
+              <button type="submit" class="btn btn-primary btn-block">加入会议</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- 发起会议卡片 -->
+        <div class="card">
+          <div class="card-header">发起会议</div>
+          <div class="card-body">
+            <form onsubmit="createMeeting(event)">
+              <div class="form-group">
+                <label>会议名称</label>
+                <input type="text" id="meeting-name" placeholder="输入会议名称" required>
+              </div>
+              <button type="submit" class="btn btn-success btn-block" id="create-btn">创建会议</button>
+            </form>
+            <!-- 创建成功后显示会议 ID -->
+            <div id="created-info" style="display: none; margin-top: 16px; padding: 12px; background: var(--primary-light); border-radius: var(--radius);">
+              <strong>会议已创建！</strong>
+              <div style="margin-top: 8px;">
+                会议 ID: <code id="created-id" style="user-select: all; font-weight: bold;"></code>
+                <button class="btn btn-sm btn-outline" onclick="copyId()" style="margin-left: 8px;">复制</button>
+              </div>
+              <button class="btn btn-sm btn-primary" style="margin-top: 12px;" id="enter-meeting-btn">进入会议</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 当前会议列表 -->
+        <div class="card" style="grid-column: span 2;">
+          <div class="card-header">
+            进行中的会议
+            <button class="btn btn-sm btn-outline" onclick="loadMeetings()">刷新</button>
+          </div>
+          <div class="card-body" id="meeting-list">
+            <div class="loading"><div class="spinner"></div></div>
+          </div>
+        </div>
+
+        <!-- 本组成员列表 -->
+        <div class="card" style="grid-column: span 2;">
+          <div class="card-header">
+            本组成员
+            <span id="group-name" class="role-badge role-moderator"></span>
+          </div>
+          <div class="card-body" id="group-members">
+            <div class="loading"><div class="spinner"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/src/utils/api.js"></script>
+  <script>
+    // 检查登录状态
+    const user = API.getCurrentUser();
+    if (!user || !API.getToken()) {
+      window.location.href = '/public/login.html';
+    }
+
+    // 显示用户信息
+    document.getElementById('user-name').textContent = user.displayName;
+    document.getElementById('user-role').textContent = '小组主持人';
+
+    // 保存创建的会议 ID
+    let createdMeetingId = null;
+
+    /**
+     * 加入会议
+     */
+    function joinMeeting(e) {
+      e.preventDefault();
+      const meetingId = document.getElementById('join-meeting-id').value.trim();
+      window.location.href = `/public/meeting.html?id=${meetingId}&role=moderator`;
+    }
+
+    /**
+     * 创建会议
+     */
+    async function createMeeting(e) {
+      e.preventDefault();
+      const name = document.getElementById('meeting-name').value.trim();
+      const btn = document.getElementById('create-btn');
+      btn.disabled = true;
+
+      try {
+        const data = await API.createMeeting(name);
+        createdMeetingId = data.meeting.id;
+
+        // 显示创建成功信息
+        document.getElementById('created-id').textContent = createdMeetingId;
+        document.getElementById('created-info').style.display = 'block';
+        document.getElementById('enter-meeting-btn').onclick = () => {
+          window.location.href = `/public/meeting.html?id=${createdMeetingId}&role=moderator`;
+        };
+
+        // 刷新列表
+        loadMeetings();
+      } catch (err) {
+        alert('创建失败: ' + err.message);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    /**
+     * 复制会议 ID
+     */
+    function copyId() {
+      navigator.clipboard.writeText(createdMeetingId);
+      alert('已复制');
+    }
+
+    /**
+     * 加载会议列表
+     */
+    async function loadMeetings() {
+      const container = document.getElementById('meeting-list');
+      try {
+        const data = await API.getMeetings();
+        if (data.meetings.length === 0) {
+          container.innerHTML = '<div class="empty-state"><p>暂无进行中的会议</p></div>';
+          return;
+        }
+        container.innerHTML = data.meetings.map(m => `
+          <div class="participant-item">
+            <div class="participant-info">
+              <div>
+                <strong>${m.name}</strong>
+                <span style="font-size: 12px; color: var(--text-secondary); margin-left: 8px;">ID: ${m.id}</span>
+              </div>
+            </div>
+            <button class="btn btn-sm btn-primary" onclick="window.location.href='/public/meeting.html?id=${m.id}&role=moderator'">
+              进入
+            </button>
+          </div>
+        `).join('');
+      } catch (err) {
+        container.innerHTML = '<div class="empty-state"><p>加载失败</p></div>';
+      }
+    }
+
+    /**
+     * 加载本组成员
+     */
+    async function loadGroupMembers() {
+      const container = document.getElementById('group-members');
+      try {
+        const data = await API.getMeetingConfigInfo();
+        const groupName = data.groups.find(g => g.id === user.group)?.name || user.group;
+        document.getElementById('group-name').textContent = groupName;
+
+        const members = data.users.filter(u => u.group === user.group);
+        if (members.length === 0) {
+          container.innerHTML = '<div class="empty-state"><p>暂无成员</p></div>';
+          return;
+        }
+        container.innerHTML = '<ul class="participant-list">' + members.map(m => `
+          <li class="participant-item">
+            <div class="participant-info">
+              <div class="participant-avatar">${m.displayName.charAt(0)}</div>
+              <div>
+                <strong>${m.displayName}</strong>
+                <span class="role-badge role-${m.role}" style="margin-left: 8px;">${m.role === 'moderator' ? '主持人' : '成员'}</span>
+              </div>
+            </div>
+          </li>
+        `).join('') + '</ul>';
+      } catch (err) {
+        container.innerHTML = '<div class="empty-state"><p>加载失败</p></div>';
+      }
+    }
+
+    // 初始化
+    loadMeetings();
+    loadGroupMembers();
+  </script>
+</body>
+</html>
